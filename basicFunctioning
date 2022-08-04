@@ -1,0 +1,223 @@
+#include <infraredsensor.h>
+#include <Servo.h>
+#include <NewPing.h>
+#include <LiquidCrystal_I2C.h>
+#include <Keypad.h> 
+#include <KNWRobot.h>
+using namespace std;
+
+ /****************
+  *   ROBOT BASIC FUNCTIONS 
+  *   - ALL EXTREMETI4ES 
+  *   - KEYPAD WIRED & FUNCTIONING 
+  *   - LCD WIRED & FUNCTIONING
+  *
+  *
+  */
+
+// Arduino Pins for robot extremeties
+//const int pingSensor = 22;
+const int IRsensor = 12;
+const int servoPin = 6;
+const int DCpin = 3;
+const int TriggerPin = 48;
+const int EchoPin = 46;
+
+const int MaxPingDistance = 200;
+int servoVal;
+
+//long pingDuration, inches, cm;
+Servo xServo;
+Servo dcMotor;
+NewPing pingSensor(TriggerPin, EchoPin, MaxPingDistance);
+
+//LCD Attributes & Variables
+int lcdAddress = 0x3F;
+int LCDLoopCount = 0; 
+LiquidCrystal_I2C *lcd = new LiquidCrystal_I2C(lcdAddress, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE); 
+
+byte ROWS = 4;
+byte COLS = 4;
+char keys[4][4] = {
+         {'1', '2', '3', 'A'},
+         {'4', '5', '6', 'B'},
+         {'7', '8', '9', 'C'},
+         {'*', '0', '#', 'D'}};
+
+ byte rowPins[4] = {39, 41, 43, 45};
+ byte colPins[4] = {47, 49, 51, 53};      //TODO CHANGE TO CORRECT PINIS 
+
+Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+ 
+void setup()
+{
+  
+  dcMotor.attach(DCpin);
+  Serial.begin(9600);
+  xServo.attach(servoPin);
+
+  lcd->begin(16, 2); 
+  lcd->home(); 
+  lcd->print("CHECK"); 
+  delay(3000); 
+  Serial.write("-------TEST BEGIN-------");
+  outputDataGap();
+ 
+  while(! Serial);
+  Serial.println("1 -- TEST IR SENSOR");
+  Serial.println("2 -- RUN SERVO");
+  Serial.println("3 -- TEST PING SENSOR");
+  Serial.println("4 -- TEST DC MOTOR");
+  Serial.println("5 -- SERVO RETURN");
+  Serial.println("6 -- DC MOTOTR OFF"); 
+  
+}
+
+void loop()
+{
+  char key = keypad.getKey(); 
+  if(key)
+  {
+    Serial.print(key);
+  }
+
+  
+  //Clear LCD Screen 
+  lcd->clear(); 
+  //Reset LCD cursor 
+  lcd->setCursor(0, 0); 
+  lcd->print("CALLED: ");
+  lcd->setCursor(0,1); 
+  if(Serial.available())
+  {
+    int test = Serial.parseInt();
+    delay(1000);
+    if(test >= 1 && test <= 6)
+    {
+      if(test == 1)
+      {
+        lcd->print("IR SENSOR"); 
+        delay(1000);
+        IRSensorTest();
+      }
+      else if(test == 2)
+      {
+        lcd->print("SERVO"); 
+        delay(1000);
+        servoMotorTest(180);
+      }
+      else if(test == 3)
+      {
+        lcd->print("PING"); 
+        delay(1000);
+        pingSensorTest();
+      }
+      else if(test == 4)
+      {
+        lcd->print("DC"); 
+        delay(1000);
+        DCMotorTest();
+      }
+      else if(test == 5)
+      {
+        lcd->print("RETURN SERVO"); 
+        delay(1000);
+        servoMotorTest(0);
+      }
+      else if(test == 6)
+      {
+        lcd->print("DC OFF");
+        delay(1000);
+        DCMotorOff();
+      }
+    }
+  }
+}
+/**************
+ * PING SENSOR TEST
+ */
+void IRSensorTest()
+{
+   int charactersReadFromIR = scanIR(IRsensor);
+   Serial.print("Chars read: ");
+   Serial.println(charactersReadFromIR);
+   
+}
+/****************
+ * SERVO MOTOR TEST
+ */
+void servoMotorTest(int n)
+{
+  Serial.write("Enter Servo Motor Test");
+  Serial.println();
+  xServo.write(n);
+  delay(20);
+  outputDataGap();
+}
+/*****
+ * PING SENSOR TEST
+ */
+void pingSensorTest()
+{
+    int distance = pingSensor.ping_cm();
+    Serial.print("Distance in centimeters: ");
+    Serial.println(distance);
+ 
+}
+/**********
+ * MICROSECOND TO CENTIMETERS
+ */
+long microsecondsToCentimeters(long ms)
+{
+  return (ms / 29) / 2;
+}
+/***************
+ * MICROSECOND TO CENTIMETERS
+ */
+long microsecondsToInches(long ms)
+{
+  return (microsecondsToCentimeters(ms) * .393701);
+}
+/********
+ *    DC MOTOR TEST
+ */
+ void DCMotorTest()
+ {
+  Serial.write("Enter DC Motor Test");
+  Serial.println();
+  digitalWrite(DCpin, HIGH);
+  dcMotor.write(45);
+ 
+ }
+ void DCMotorOff()
+ {
+    dcMotor.write(0); 
+    digitalWrite(DCpin, LOW);
+ }
+/*************
+ *    OUTPUT DATA GAP
+ */
+void outputDataGap()
+{
+  for(int i = 0; i < 7; i++)
+  {
+    Serial.println();
+  }
+}
+
+/*********
+ *
+ * DC MOTOR SPEED CHANGE
+ */
+//IMPLEMENT IF EVERYTHING ELSE WORKS
+void speedChange()
+{
+  if(Serial.available())    // if user is writing to the serial
+  {
+    int speed = Serial.parseInt();
+    if(speed >= 0 && speed <= 225)
+    {
+      analogWrite(DCpin, speed);
+    }
+  }
+}
