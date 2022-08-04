@@ -1,0 +1,1312 @@
+#include <KNWRobot.h>
+ 
+//COURSE DIMENSIONS -- in inches 
+    // QUAD I
+const int Q1Length = 335;                   // 132 in
+const int Q1Width = 168;                     //66 in
+const int Q1WidthTraversalTime = 6250;
+const int bridgeLength = 30;                 // ~12 in
+const int retrievalZoneOpening = 40;        // 16 in
+  // QUAD II
+const int Q2Length = 335;                   // 132 in
+const int salinityPlatformWidth = 60;     // 60.96 cm; 24 in
+
+int X, Y;
+
+//Jack's Variables
+const float robSpeed= 39.015;
+
+
+
+
+
+
+// MOTOR PINS 
+const int lWheel = 11; // dc 2 
+const int rWheel = 10; //dc 
+const int scoop = 2; // not in use 
+const int salinityDip = 9; // DC4
+const int salinityMotorX = 8; // DC1
+
+// Salinity reading data  
+const int salinityArm = 3;
+const int salinityProbe = 4; 
+const int salinityArmDeploymentSpeed = 85;        //TODO: Test to see if too fast / slow 
+const int salinityProbeDeploymentSpeed = 90;  
+const int salinityArmRunTimeMs = 1000;           // TODO:  Test for correct values 
+const int salinityProbeLowerTimeMs = 0; 
+const int salinityDataCollectionTimeMs = 0; 
+const int LWSalinityPlatformBackwardsSpeed = 98; 
+const int RWSalinityPlatformBackwardsSpeed = 90; 
+
+
+//SENSOR DATA 
+      // PING SENSORS
+          // "ping 3"
+const int leftPingTrigger = 24; 
+const int leftPingEcho = 26; 
+          // "ping 2"
+const int rightPingTrigger = 36; 
+const int rightPingEcho = 34; 
+          //"Ping 1" 
+const int frontPingTrigger = 28; 
+const int frontPingEcho = 30;
+
+const int maxPingDistance = 200; 
+
+    //Ping IDs
+int leftPing = 3;
+int rightPing = 2; 
+int frontPing = 1; 
+      // INFRARED SENSORS 
+        //Pins
+const int IR1 = 52; 
+const int IR2 = 50; 
+const int IR3 = 48; 
+        // IDs
+const int ir_1 = 1; 
+const int ir_2 = 2; 
+const int ir_3 = 3; 
+
+const int inclinePin = 5; 
+
+//  WHEEL & MOVEMENT DATA 
+int leftWheel = 1; 
+int rightWheel = 2; 
+
+int leftForward = 103; 
+int leftBackward = 84; 
+int rightForward = 83; 
+int rightBackward = 104; 
+
+
+          //TODO: TEST VARIOUS VALUES 
+int turnTimeRight = 775;      // time in ms to rotate 90 degrees in place
+int turnTimeLeft = 1100;
+int adjustTimeRight = 60;
+int adjustTimeLeft = 70;
+    //Right turn
+int RTurnSpeedR = 100; 
+int RTurnSpeedL = 77;
+int LTurnSpeedR = 80;
+int LTurnSpeedL = 100;
+
+int bridgeRunMs = 3675;  // time in ms to run the length of the bridge
+int bridgeSpeedLeft = 102;
+int bridgeSpeedRight = 83; 
+
+int toBoundTime = 1350;
+
+int halfRampRunMs = 1000; 
+
+int pingCheckTimeMs = 500;
+int traverseRetrievalZoneTimeMs = 0; //Time to move to end of salamander zone  
+
+            //TODO: ADD DISTANCE VALUES FOR BELOW VARIABLES
+long distanceChangeMarginOfError = 3;    // Margin of error for change in ping sensor distance without 
+                                            //    indicating the obstacle is no longer there  
+long inclineMarginOfError = 0;                                             
+long closestVertDistance = 20;
+long closestHorDistance = 18;                              
+KNWRobot* rob;    // ROBOT OBJECT
+const double robotlength = 30;    // in cm 
+
+
+
+
+void setup() 
+{
+     Serial.begin(9600);
+   // initilize robot object 
+   rob = new KNWRobot(0x3F);
+   // setup ping sensors
+       // p3 - left
+   rob->setupPing(leftPing, leftPingTrigger, leftPingEcho);
+      // p2 - right
+   rob->setupPing(rightPing, rightPingTrigger, rightPingEcho);
+      // p1 - front
+   rob->setupPing(frontPing, frontPingTrigger, frontPingEcho); 
+   
+   // set up inclinometer
+   rob->setupIncline(inclinePin);
+   
+   // set up wheel motors
+   rob->setupMotor(leftWheel, lWheel);
+   rob->setupMotor(rightWheel, rWheel); 
+   rob->setupMotor(salinityArm, salinityMotorX); 
+   rob->setupMotor(salinityProbe, salinityDip); 
+   
+   // set up ir sensors 
+   rob->setupIR(ir_1, IR1); 
+   rob->setupIR(ir_2, IR2); 
+   rob->setupIR(ir_3, IR3); 
+   
+//   while(true){
+//    rob->scanIR(ir_3);
+//    Serial.print("This is: ");
+//    Serial.println(rob->getIR()[0]);
+//   }
+}
+
+void loop()
+{
+  delay(1500);
+  
+  moveBetweenWExitR();
+
+  delay(10000);
+  
+
+//   Serial.println("Front"); 
+//   for (int i = 0; i < 12; i++)
+//   {
+//    checkFrontPing(); 
+//   }
+//   delay(500); 
+//   Serial.println("Right"); 
+//   for(int j = 0; j < 12; j++)
+//   {
+//    checkRightPing(); 
+//   }
+//   delay(500);
+ // checkLeftPing();   
+//  rob->clearLCD(); 
+//  rob->printLCD((char*) "Press a key"); 
+//  delay(2000); 
+//  int input = -1; 
+//  input = rob->getKeypadInput();
+
+//  rob->clearLCD(); 
+//  switch(input)
+//  {
+//    case(1):
+//      rob->clearLCD();
+//      rob->printLCD((char*) "Run Q1 - LEFT"); 
+//      firstCourseLeftSide(); 
+//      break; 
+//    case(2):
+//      rob->clearLCD(); 
+//      rob->printLCD((char*) "Run Q1 - RIGHT"); 
+//      firstCourseRightSide(); 
+//      break;
+//    case(3):
+//      rob->clearLCD(); 
+//      rob->printLCD((char*) "Run Q2 - LEFT"); 
+//      secondCourseLeftSide(); 
+//      break;
+//    case(4):
+//      rob->clearLCD(); 
+//      rob->printLCD((char*) "Run Q2 - RIGHT"); 
+//      secondCourseRightSide(); 
+//      break; 
+//    case(99):
+//      //exit loop somehow 
+//      break;
+
+  delay(10000);
+}
+
+
+
+
+
+
+void Q1MazeNavRight()
+{
+    runBridge();
+    delay(500);
+    moveForwardTime(toBoundTime);
+    delay(500);
+    turnRight();
+    delay(500);
+    moveForwardTowardsObject(); 
+    delay(500);
+    turnRight();
+    delay(500); 
+    int t1 = millis();
+    moveAlongLeft();
+    int t2 = millis();
+    int timeToZero = t2 - t1; 
+    delay(500);
+    turnLeft();
+    delay(500);
+    moveForwardTowardsObject(); 
+    delay(500);
+    turnLeft(); 
+    delay(500);
+    moveForwardTime(timeToZero); 
+    delay(500);
+    turnRight();
+    delay(500);
+    turnRight();
+    delay(500); 
+    t1 = millis(); 
+    //moveBetween();
+    t2 = millis(); 
+    timeToZero = t2 - t1; 
+    delay(500);
+    turnLeft(); 
+    delay(500);
+    moveForwardTime(1000);
+    delay(500);
+    turnLeft(); 
+    delay(500);
+    moveForwardTime(timeToZero);
+    delay(500);
+    turnRight();
+    delay(500);
+    turnRight();
+    delay(500);
+    
+}
+void Q1MazeNavLeft()
+{
+    runBridge();
+    delay(500);
+    moveForwardTime(toBoundTime);
+    delay(500);
+    turnLeft();
+    delay(500);
+    moveForwardTowardsObject(); 
+    delay(500);
+    turnLeft();
+    delay(500); 
+    int t1 = millis();
+    moveAlongRight();
+    int t2 = millis();
+    int timeToZero = t2 - t1; 
+    delay(500);
+    turnRight();
+    delay(500);
+    moveForwardTowardsObject(); 
+    delay(500);
+    turnRight(); 
+    delay(500);
+    moveForwardTime(timeToZero); 
+    delay(500);
+    turnLeft();
+    delay(500);
+    turnLeft();
+    delay(500); 
+    t1 = millis(); 
+    //moveBetween();
+    t2 = millis(); 
+    timeToZero = t2 - t1; 
+    delay(500);
+    turnRight();
+    delay(500); 
+    moveForwardTime(1000);
+    delay(500);
+    turnRight();
+    delay(500);
+    moveForwardTime(timeToZero);
+    delay(500);
+    turnLeft();
+    delay(500);
+    turnLeft();
+    delay(500);
+    
+}
+
+void navigateQ2Right()
+{
+  moveAlongRight();
+  turnRight(); 
+  Q2RampRun();
+}
+void navigateQ2Left()
+{
+  moveAlongLeft(); 
+  turnLeft(); 
+  Q2RampRun(); 
+}
+
+
+//Course subFunctions_____________________________________________________________________
+//General SubFunctions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//________________________________    MOVEMENT _________________________________
+/*****
+ *      MOVE FORWARD TIME 
+ *      @param int t 
+ *      
+ *      moves forwards for t / 1000 seconds 
+ * 
+ ****/
+void moveForwardTime(int t)
+{
+  rob->pcaDC2MotorsTime(leftWheel, leftForward, rightWheel, rightForward, t);
+}
+/*****
+ *    MOVE FORWARD 
+ *    
+ *    moves froward indefinitely 
+ * 
+ * 
+ ****/
+void moveForward()
+{
+  rob->pcaDC2Motors(leftWheel, leftForward, rightWheel, rightForward); 
+}
+/*****
+ *      MOVE BACKWARDS TIME 
+ *      @param int t
+ *      
+ *      Moves forward for t / 1000 seconds 
+ *****/
+void moveBackwardsTime(int t)
+{
+  rob->pcaDC2MotorsTime(leftWheel, leftBackward, rightWheel, rightBackward, t); 
+}
+/***
+ *    MOVE BACKWARDS 
+ *    
+ *    Move backwards indefinetely  
+ ****/
+void moveBackwards()
+{
+  rob->pcaDC2Motors(leftWheel, leftBackward, rightWheel, rightBackward);
+}
+/****
+ *      TURN LEFT 
+ *      
+ *      turn 90 degrees left in place 
+ * 
+ */
+void turnLeft()
+{
+  delay(500);
+  rob->pcaDC2MotorsTime(leftWheel, leftBackward, rightWheel, rightForward, turnTimeLeft); 
+}
+/****
+ *    TURN RIGHT 
+ *    
+ *    turn right 90 degrees in place 
+ * 
+ */
+void turnRight()
+{
+  delay(500);
+  rob->pcaDC2MotorsTime(leftWheel, leftForward, rightWheel, rightBackward, turnTimeRight); 
+}
+/*********
+ *    CIRCLE INDEF TO THE LEFT 
+ * 
+ *******/
+void circleLeft()
+{
+  rob->pcaDC2Motors(leftWheel, leftBackward, rightWheel, rightForward); 
+}
+/***********
+ *    CIRCLE INDEF TO THE RIGHT 
+ * 
+ */
+void circleRight()
+{
+  rob->pcaDC2Motors(leftWheel, leftForward, rightWheel, rightBackward); 
+}
+/*****
+ *    CONDUCTIVITY READING 
+ *    @return int
+ *    
+ *    gets conductivity reading from salinity 
+ *    sensor and returns value as an int
+ */
+ //______________________________________ SENSOR FUNCTIONS _________________________________
+int conductivityReading()
+{
+    return rob->getConductivity();
+}
+/******
+ *        INCLINE READING 
+ *        @return int
+ *        
+ *        gets incline reading from inclinometer
+ *        and returns value as an int
+ *        
+ */
+int inclineReading()
+{
+ return rob->getIncline();
+}
+/****
+ *    SEND FRONT PING
+ *    @return long 
+ *    
+ *    sends a ping from the front ping trigger 
+ *    and reads in the distance from the object 
+ *    in front of the robot to the ping sensor
+ *    returns the distance in centimeters
+ */
+  //___________________________________________  PING SENSORS
+long sendFrontPing()
+{
+  return rob->getPing(frontPing); 
+}
+/******
+ *    SEND LEFT PING 
+ *    @return long
+ *    
+ *    sends a ping the from left ping trigger 
+ *    and reads in teh distance from the object 
+ *    to the left on the left of the robot to 
+ *    the left ping sensor. Returns the distance 
+ *    in centimeters
+ * 
+ */
+long sendLeftPing()
+{
+  return rob->getPing(leftPing); 
+}
+/******
+ *    SEND RIGHT PING 
+ *    @return long
+ *    
+ *    sends a ping from the right ping trigger 
+ *    and reads in the distance from the object 
+ *    on the right of the robot to the right  
+ *    ping sensor. Returns distance in centimeters
+ * 
+ * 
+ */
+long sendRightPing()
+{
+  return rob->getPing(rightPing); 
+}
+//_______________________________________________  IR SENSORS 
+/********
+ *    RIGHT IR READING 
+ *    @return char*
+ *    
+ *    Returns right infrared sensor char 
+ * 
+ */
+char* rightIRReading()
+{
+  int rightIRCharsRead = rob->scanIR(ir_1);     //TODO -- IDNETIFY  RIGHT LEFT & FRONT OF IR 1, IR 2, & IR 3
+  return rob->getIR();
+}
+/********
+ *    Left IR READING 
+ *    @return char*
+ *    
+ *    Returns left infrared sensor char 
+ * 
+ */
+char* leftIRReading()
+{
+  int leftIRCharsRead = rob->scanIR(ir_2); 
+  return rob->getIR(); 
+}
+/********
+ *    FRONT IR READING 
+ *    @return char*
+ *    
+ *    Returns front infrared sensor char 
+ * 
+ */
+char* frontIRReading()
+{
+  int frontIRCharsRead = rob->scanIR(ir_3);
+  return rob->getIR();
+}
+
+//Situational Subfunctions __________________________________________________________________________
+/*****
+ *    RUN BRIDGE 
+ *    
+ *    moves forwards the length of the bridge 
+ * 
+ */
+void runBridge()
+{
+  rob->pcaDC2MotorsTime(leftWheel, bridgeSpeedLeft, rightWheel, bridgeSpeedRight, bridgeRunMs); 
+  Serial.println("exit run bridge"); 
+}
+/***************
+ *    MOVE FORWARD TOWARDS OBJECT 
+ *    
+ *    Sends out front ping & if it returns a 
+ *    distance larger than closestVertDistance 
+ *    moves ROb forward. While the distance 
+ *    retuned by the front ping sensor is 
+ *    greater than closestVertDistance, Rob moves 
+ *    forward and checks distance to the front
+ *    object until the distance returned is less
+ *    than or equal to closest distance 
+ * 
+ * 
+ * 
+ ***************/
+void moveForwardTowardsObject()
+{
+  Serial.println("Enter moveFiorwardTowardsObject");
+  long vals [5]; 
+  for(int i = 0; i < 5; i++)
+  {
+    vals[i] = sendFrontPing(); 
+  }
+  long distToObj = getMedianOfFive(vals);
+
+  unsigned long timer= millis(); 
+  moveForward();
+  while(distToObj > closestVertDistance) 
+  {
+    //moveForward(); 
+    for(int j = 0; j < 5; j++)
+    {
+      vals[j] = sendFrontPing(); 
+    }
+    distToObj = getMedianOfFive(vals); 
+    Serial.println(distToObj);
+  }  // This function will most likely be followed by 
+                                              //    turnLeft() or turnRight() depending on use 
+    rob->pcaStopAll();
+    timer= millis() - timer; 
+    Y+=(robSpeed * ((float) (timer/1000)));
+    Serial.println("Exit moveForwardTowardsObject"); 
+}
+/****************
+ *    MOVE HALF RAMP 
+ *    
+ *    Moves Rob approximately halfway up the
+ *    ramp leaving to the final platform. 
+ * 
+ */
+void moveHalfRamp()
+{
+  moveForwardTime(halfRampRunMs); 
+}
+/*****************
+ *      MOVE REMAINING RAMP LENGTH 
+ *      
+ *      While the inclinometer does not return 
+ *      0 incline (within inclineMarginOfError) 
+ *      the robot moves forwards. If the Rob
+ *      detects she is on a flat surface, 
+ *      wheels stop 
+ * 
+ * 
+ *****************/
+void runRemainingRampLength() 
+{ 
+  int movingIncline = rob->getIncline(); 
+  while(movingIncline > inclineMarginOfError)   //While still on a slope 
+  {
+    movingIncline = rob->getIncline();
+    moveForward(); 
+  }
+  rob->pcaStopAll(); 
+  //Exit loop - Rob is on a flat surface 
+}
+/**********
+ *    MOVE WHILE NO IR 1 HIT 
+ *    
+ *    Moves forward while IR1 does not detect 
+ *    a hit. If the IR sensor returns a value 
+ *    other than 0 or -1, the robot stops moving
+ * 
+ *********/
+void moveWhileNoIR1Hit()
+{
+  int charsRead; 
+  char* IRChars; 
+  bool noHit = true; 
+  moveForward(); 
+  while (noHit) 
+  {
+    charsRead = rob->scanIR(ir_1); 
+    IRChars = rob->getIR(); 
+    if (IRChars != 0) 
+    {
+      noHit = false; 
+    }
+  }
+  rob->pcaStopAll();
+}
+/****************
+ *      IR1 HIT
+ *      
+ *      Recurrently takes a reading from
+ *      IR 1 and prints it to the Serial.
+ *      If the IR reading is not 0 or -1,
+ *      the IR sensor has detected the IR 
+ *      beam and the function exits
+ */
+void IR1Hit()
+{
+  int charsRead; 
+  char IRChars; 
+  bool noHit = true; 
+   
+  while (noHit) 
+  {
+    charsRead = rob->scanIR(ir_1); 
+    IRChars = rob->getIR()[0]; 
+    Serial.println(IRChars); 
+    if (charsRead != 0 && charsRead != -1) 
+    {
+      noHit = false;
+    }
+  }
+}
+/**********
+ *    MOVE WHILE NO IR 2 HIT 
+ *    
+ *    Moves forward while IR2 does not detect 
+ *    a hit. If the IR sensor returns a value 
+ *    other than 0 or -1, the robot stops moving
+ * 
+ *********/
+void moveWhileNoIR2Hit()
+{
+  int charsRead; 
+  char IRChar; 
+  bool noHit = true; 
+  moveForward();
+  while (noHit) 
+  {
+    charsRead = rob->scanIR(ir_2); 
+    IRChar = rob->getIR()[0]; 
+    if (charsRead != 0 && charsRead != -1) 
+    {
+      noHit = false; 
+    }
+    
+  }
+  rob->pcaStopAll();
+}
+/**********
+ *    MOVE WHILE NO IR 3 HIT 
+ *    
+ *    Moves forward while IR3 does not detect 
+ *    a hit. If the IR sensor returns a value 
+ *    other than 0 or -1, the robot stops moving
+ * 
+ *********/
+void moveWhileNoIR3Hit()
+{
+  int charsRead; 
+  char* IRChars; 
+  bool noHit = true; 
+  moveForward(); 
+  while (noHit) 
+  {
+    charsRead = rob->scanIR(ir_3); 
+    IRChars = rob->getIR(); 
+    if (IRChars != 0 && IRChars != -1) 
+    {
+      noHit = false; 
+    }
+    
+  }
+  rob->pcaStopAll();
+}
+/***************
+ *    Q2 RAMP RUN
+ *    
+ *    Moves forwards up the ramp 
+ *    approximately half way and stops
+ *    takes an inclination reading and
+ *    calls the ADC conversion function 
+ *    prints the converted inclination 
+ *    value to the LCD. Moves remaining 
+ *    length of the ramp
+ * 
+ */
+void Q2RampRun()
+{
+  // call once at base of ramp 
+  moveForwardTime(halfRampRunMs); 
+  //Q2InclineMeasure(); 
+  delay(5000); 
+
+  runRemainingRampLength();       // TODO: test accuracy. consider using 
+                                    // moveForwardTowardsObject() function instead
+}
+/******************
+ *      Q2 INCLINE MEASURE
+ *      
+ *      takes 20 incline readings, ignoring the
+ *      values while the inclinometer calibrates.
+ *      Takes 20 more readings, averaging them
+ *      and printing the value to the LCD
+ *      & to the Serial. 
+ * 
+ * 
+ */
+void Q2InclineMeasure()
+{
+  // For whatever reason our inclinometer 
+      // needs a second to return consistent 
+      // values, so run incline reading 20
+      // times, ignoring the values
+  for(int i = 0; i < 20; i++)                 //TODO: Check that 20 readings is enough
+  {                                                 //Time for the inclinometer to calibrate
+    inclineReading();                         
+  }
+
+  int sum = 0;
+  for (int i = 0; i < 20; i++)
+  {
+    sum = sum + inclineReading();
+  }
+  int reading = sum / 20; 
+  rob->clearLCD();
+  rob->printLCD((char*) reading); 
+  Serial.println(reading);
+  
+}
+/******************
+ *    FIND VERTICAL IR LEFT COURSE
+ *    
+ *    turns left and moves forward searching for
+ *    an IR hit from the right sensor. Once the 
+ *    hit is detected, the robot turns right--
+ *    reorienting itself forward--then stops
+ */
+void findVerticalIRLeftCourse()
+{
+  turnLeft(); 
+  forwardFindIRRight(); 
+  turnRight();
+  rob->pcaStopAll();  
+}
+/*********************
+ *    FIND VERTICAL IR RIGHT COURSE
+ *    
+ *    turns right and moves forward searching for 
+ *    an IR hit from the left sensor. Once the hit
+ *    is detected, rob turns left--reorienting itself
+ *    forward--then stops.
+ * 
+ * 
+ */
+void findVerticalIRRightCourse()
+{
+  turnRight(); 
+  forwardFindIRLeft(); 
+  turnLeft(); 
+}
+/************************
+ *    FIND HORIZONTAL IR 
+ *    
+ *    moves forward until it gets an IR
+ *    hit from the left IR sensor
+ * 
+ */
+void findHorizontalIR()
+{
+  forwardFindIRLeft(); 
+}
+/************
+ *    MOVE ALONG LEFT 
+ *    
+ *    moves forward along an object on the
+ *    left. While the left ping sensor
+ *    returns a distance less than 30, 
+ *    moves forward continuously sending
+ *    a left ping. If the ping distance 
+ *    returned is greater than 30, stops
+ * 
+ */
+void moveAlongLeft()
+{
+  bool pathBlocked = true; 
+  long pings[5]; 
+
+  
+  moveForward(); 
+  while(pathBlocked){
+    long med;
+    for (int j = 0; j < 5; j++)
+    {
+      pings[j] = sendLeftPing();
+    }
+    long distance = getMedianOfFive(pings); 
+    // Serial.println(distance);
+    if((distance > 50 || distance==0) || (distance < closestHorDistance))
+    {
+      for(int i = 0; i < 5; i++)
+      {
+        pings[i] = sendLeftPing(); 
+      }
+      med = getMedianOfFive(pings);
+      if(med > 50)
+      {
+        delay(750);
+        pathBlocked = false;
+      } 
+      if(med < closestHorDistance)
+      {
+        makeCorrectionL();
+      }
+    }
+  }
+  rob->pcaStopAll();
+} 
+/************
+ *    MOVE ALONG RIGHT 
+ *    
+ *    moves forward along an object on the
+ *    right. While the right ping sensor
+ *    returns a distance less than 30, 
+ *    moves forward continuously sending
+ *    a right ping. If the ping distance 
+ *    returned is greater than 30, stops
+ * 
+ */
+void moveAlongRight()
+{
+  bool pathBlocked = true; 
+  long pings[5]; 
+  moveForward();
+   
+  while(pathBlocked)
+  {
+    for (int j = 0; j < 5; j++)
+    {
+      pings[j] = sendRightPing();
+    }
+    long distance = getMedianOfFive(pings); 
+    // Serial.println(distance);
+    
+    if((distance > 50 || distance == 0) || (distance < closestHorDistance))
+    {
+      for(int i = 0; i < 5; i++)
+      {
+        pings[i] = sendRightPing(); 
+      }
+      long med = getMedianOfFive(pings);
+      if (med > 50 || med == 0)
+      {
+        delay(750);
+        pathBlocked = false;
+      } 
+      if(med < closestHorDistance)
+      {
+        makeCorrectionR();
+      }
+    }
+  }
+   rob->pcaStopAll();                               
+}
+/************
+ *    MOVE BETWEEN
+ *    
+ *    moves forward along between the
+ *    two walls throughout the e 
+ * 
+ */
+void moveBetweenWExitL(){
+  long distanceR;
+  long distanceL;
+  long pings[5]; 
+
+  //initial reading for LeftPings
+  for(int i = 0; i < 5; i++)
+  {
+    delay(100);
+    pings[i] = sendLeftPing(); 
+  }
+  distanceL = getMedianOfFive(pings);
+
+  //initial reading for RightPings
+  for(int i = 0; i < 5; i++)
+  {
+    delay(100);
+    pings[i] = sendRightPing(); 
+  }
+  distanceR = getMedianOfFive(pings);
+
+  Serial.print("L: ");
+  Serial.print(distanceL);
+  Serial.print("   R: ");
+  Serial.println(distanceR);
+
+  if(distanceL <= closestHorDistance || distanceR <= closestHorDistance){
+    makeCorrection(distanceL, distanceR);
+    //moveForwardTime(500); //<--necessary?
+  }
+  moveForward(); 
+  delay(150);
+  bool trigger= true; 
+  long lastDistance;
+  while((distanceL < 25 && distanceR < 25) && trigger)
+  {
+    Serial.print("At the start of the loop");
+    if(distanceL ==0 || distanceL> 25)
+    {
+      Serial.print("Found a hole at ");
+      Serial.print("L: ");
+      Serial.print(distanceL);
+      Serial.print("   R: ");
+      Serial.println(distanceR);
+      rob->pcaStopAll();
+      trigger = false; 
+    }
+    if((distanceL<= closestHorDistance && distanceL != 0) || (distanceR<= closestHorDistance && distanceR!=0))
+    {// checks to see if there needs to be a correction
+        Serial.print("Made a correction at ");
+        Serial.print("L: ");
+        Serial.print(distanceL);
+        Serial.print("   R: ");
+        Serial.println(distanceR);
+        makeCorrection(distanceL, distanceR);
+        delay(250); //added this to allow the robot to act upon the correction made above (value can be changed)
+    }
+    if(distanceR-lastDistance < 3){
+      makeCorrectionL();
+    }
+    for(int i = 0; i < 5; i++)
+    {
+      delay(50);
+      pings[i] = sendLeftPing(); 
+    }
+    distanceL = getMedianOfFive(pings);
+    for(int i = 0; i < 5; i++)
+    {
+      delay(50);
+      pings[i] = sendRightPing(); 
+    }
+    distanceR = getMedianOfFive(pings);
+    Serial.print("L: ");
+    Serial.print(distanceL);
+    Serial.print("   R: ");
+    Serial.println(distanceR);
+  }
+}
+//----------------------------------
+void moveBetweenWExitR(){
+  long distanceR;
+  long distanceL;
+  long pings[5]; 
+
+  //initial reading for LeftPings
+  for(int i = 0; i < 5; i++)
+  {
+    delay(100);
+    pings[i] = sendLeftPing(); 
+  }
+  distanceL = getMedianOfFive(pings);
+
+  //initial reading for RightPings
+  for(int i = 0; i < 5; i++)
+  {
+    delay(100);
+    pings[i] = sendRightPing(); 
+  }
+  distanceR = getMedianOfFive(pings);
+
+  Serial.print("L: ");
+  Serial.print(distanceL);
+  Serial.print("   R: ");
+  Serial.println(distanceR);
+
+  if(distanceL <= closestHorDistance || distanceR <= closestHorDistance){
+    makeCorrection(distanceL, distanceR);
+    //moveForwardTime(500); //<--necessary?
+  }
+  moveForward(); 
+  delay(150);
+  bool trigger= true; 
+  long lastDistance=-1;
+  bool foundAHole= false; 
+  while((distanceL < 25 && distanceR < 25) && trigger)
+  {
+    Serial.print("At the start of the loop");
+    if(distanceR ==0 || distanceR> 25)// there is a hole
+    {
+      Serial.print("Found a hole at ");
+      Serial.print("L: ");
+      Serial.print(distanceL);
+      Serial.print("   R: ");
+      Serial.println(distanceR);
+      rob->pcaStopAll();
+      foundAHole= true;
+      trigger = false; 
+    }
+    if((distanceL<= closestHorDistance && distanceL != 0) || (distanceR<= closestHorDistance && distanceR!=0))// checks to see if there needs to be a correction
+    {
+        Serial.print("Made a correction at ");
+        Serial.print("L: ");
+        Serial.print(distanceL);
+        Serial.print("   R: ");
+        Serial.println(distanceR);
+        makeCorrection(distanceL, distanceR);
+        delay(250); //added this to allow the robot to act upon the correction made above (value can be changed)
+    }
+    if(distanceR-lastDistance >= 2){
+      makeCorrectionL();
+    }
+    lastDistance= distanceR;
+    if(!foundAHole){
+      for(int i = 0; i < 5; i++)
+      {
+        delay(50);
+        pings[i] = sendLeftPing(); 
+      }
+      distanceL = getMedianOfFive(pings);
+      for(int i = 0; i < 5; i++)
+      {
+        delay(50);
+        pings[i] = sendRightPing(); 
+      }
+      distanceR = getMedianOfFive(pings);
+      Serial.print("L: ");
+      Serial.print(distanceL);
+      Serial.print("   R: ");
+      Serial.println(distanceR);
+    }
+  }
+}
+/************
+ *    MAKE CORRECTION 
+ *    
+ *    Recieves the left and right distance
+ *    and turns the robot slightly to correct
+ *    its course
+ */
+void makeCorrection(long distL, long distR)
+{
+  rob->pcaStopAll();
+  if(distL>distR){
+    rob->pcaDC2MotorsTime(leftWheel, leftForward, rightWheel, rightBackward, adjustTimeLeft); 
+  }
+  else{
+    rob->pcaDC2MotorsTime(leftWheel, leftForward, rightWheel, rightBackward, adjustTimeRight); 
+  }
+  moveForward();
+}
+void makeCorrectionL(){
+  rob->pcaStopAll();
+  rob->pcaDC2MotorsTime(leftWheel, leftForward, rightWheel, rightBackward, adjustTimeLeft); 
+  moveForward();
+}
+void makeCorrectionR(){
+  rob->pcaStopAll();
+  rob->pcaDC2MotorsTime(leftWheel, leftForward, rightWheel, rightBackward, adjustTimeRight); 
+  moveForward();
+}
+/************
+ *    CHECK RIGHT PING 
+ *    
+ *    Sends right ping and prints 
+ *    returned value to Serial
+ */
+void checkRightPing()
+{
+  Serial.println(sendRightPing());
+  delay(1000);
+}
+/****************
+ *    CHECK FRONT PING
+ *    
+ *    Sends front ping and prints
+ *    returned value to Serial.
+ */
+void checkFrontPing()
+{
+  Serial.println(sendFrontPing());
+  delay(1000); 
+}
+/**************
+ *    CHECK LEFT PING 
+ *    
+ *    Sends left ping and prints 
+ *    returned value to Serial. 
+ * 
+ */
+void checkLeftPing()
+{
+  Serial.println(sendLeftPing());
+  delay(500);
+}
+/************************
+ *    LOCATE SALAMANDER RETRIEVAL ZONE LEFT
+ *    
+ *    Finds the vertical IR beacon then the 
+ *    horizontal IR beacon. Then sends right 
+ *    ping. If the distance returned is between 
+ *    30 and 50, turn 90 degrees to orient 
+ *    backwards & move backwards into 
+ *    retrieval zone. If the distance returned 
+ *    is smaller than 30, move along the
+ *    boarder of the retrieval zone until the ping 
+ *    distance returned is greater than or equal to
+ *    30 cm. Then turn right to orient backwards 
+ *    and enter retrieval zone backwards.  
+ */
+void locateSalamanderRetrievalZoneLeft()
+{
+  findVerticalIRLeftCourse(); 
+  findHorizontalIR(); 
+
+  int distance = sendRightPing(); 
+  //      Case 1: Zone opening directly to right 
+  if(distance >= 30 && distance <= 50)
+  {
+    turnLeft(); // now oriented backwards 
+    moveBackwardsTime(traverseRetrievalZoneTimeMs); 
+  }
+
+  //    Case 2: Not at zone opening
+  else if(distance < 30) 
+  {
+    bool pathBlocked = true; 
+    while (pathBlocked)
+    {
+      moveAlongRight(); 
+      turnRight(); 
+      distance = sendRightPing(); 
+      if(distance >= 30)      // Now at retrieval opening 
+      {
+        delay(500); 
+        pathBlocked = false;
+      }
+    }
+    turnRight();            // Now at retrieval opening
+    moveBackwardsTime(traverseRetrievalZoneTimeMs); 
+  }
+}
+/************************
+ *    LOCATE SALAMANDER RETRIEVAL ZONE RIGHT
+ *    
+ *    Finds the vertical IR beacon then the 
+ *    horizontal IR beacon. Then sends left 
+ *    ping. If the distance returned is between 
+ *    30 and 50, turn 90 degrees to orient 
+ *    backwards & move backwards into 
+ *    retrieval zone. If the distance returned 
+ *    is smaller than 30, move along the
+ *    boarder of the retrieval zone until the ping 
+ *    distance returned is greater than or equal to
+ *    30 cm. Then turn right to orient backwards 
+ *    and enter retrieval zone backwards.  
+ */
+void locateSalamanderRetrievalZoneRight()
+{
+  findVerticalIRRightCourse(); 
+  findHorizontalIR(); 
+
+  int distance = sendLeftPing(); 
+  //      case 1: Zone opening directly to left 
+  if(distance >= 30 && distance <= 50)
+  {
+    turnRight();    // oriented backwards
+    moveBackwardsTime(traverseRetrievalZoneTimeMs); 
+  }
+  else if(distance < 30)
+  {
+    bool pathBlocked = true; 
+    while(pathBlocked)
+    {
+      moveAlongLeft(); 
+      turnLeft(); 
+      distance = sendLeftPing();
+      if(distance < 30)
+      {
+        delay(500);
+        pathBlocked = false;
+      }
+    }
+    turnRight(); 
+    moveBackwardsTime(traverseRetrievalZoneTimeMs);
+  } 
+}
+
+void Q2LocateRampRight()
+{
+  findVerticalIRRightCourse();
+  findHorizontalIR(); 
+
+  //Now at base of ramp
+}
+
+void extendSalinityArm() 
+{
+  rob->pcaDCMotorTime(salinityArm, salinityArmDeploymentSpeed, salinityArmRunTimeMs); 
+}
+void deploySalinityProbe()
+{
+  rob->pcaDCMotorTime(salinityProbe, salinityProbeDeploymentSpeed, salinityProbeLowerTimeMs); 
+}
+int salinityCalc()
+{
+  int sum = 0; 
+  for(int i = 0; i < 10; i++)
+  {
+    sum = sum + conductivityReading(); 
+  }
+  int salinity = sum / 10; 
+  Serial.println(salinity); 
+  return salinity; 
+}
+int salinityConversion(int ADCSalinity)
+{
+  return ADCSalinity; 
+}
+
+long getMedianOfFive(long * values)    //insertion sort 
+{ 
+  int i, key, j; 
+  for( int i = 1; i < 5; i++)
+  {
+    key = values[i];
+    j = i - 1;
+
+    while(j >= 0 && values[j] > key)
+    {
+      values[j + 1] = values[j]; 
+      j = j - 1;
+    }
+    values[j + 1] = key;
+  }
+  Serial.println(values[2]);
+  return values[2];
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ______________________________________________________________________
+        //TODO: determine which ir sensor # is which direction 
+              // & implement the following functions 
+
+
+void forwardFindIRFront()
+{
+  
+}
+void backwardsFindIRFront()
+{
+  
+}
+void forwardFindIRLeft()
+{
+  
+}
+void backwardFindIRLeft()
+{
+
+}
+void forwardFindIRRight()
+{
+
+}
+void backwardsFindIRRight()
+{
+  
+}
+
+
+                                  
